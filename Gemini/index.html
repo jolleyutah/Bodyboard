@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Recomp Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent-blue: #0a84ff;
+            --accent-green: #30d158;
+            --accent-orange: #ff9f0a;
+            --text-main: #ffffff;
+            --text-muted: #8e8e93;
+            --border-color: #2c2c2e;
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding-bottom: calc(70px + var(--safe-area-bottom));
+            font-size: 16px;
+        }
+
+        /* App Header */
+        header {
+            padding: 20px 16px 10px;
+            background-color: var(--bg-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Navigation Views */
+        .view {
+            display: none;
+            padding: 16px;
+            animation: fadeIn 0.25s ease-in-out;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards & UI Elements */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Progress Components */
+        .progress-group {
+            margin-bottom: 16px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .progress-bar-bg {
+            background-color: var(--border-color);
+            border-radius: 6px;
+            height: 12px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 6px;
+            transition: width 0.4s ease;
+        }
+
+        /* Metric Grid */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .metric-box {
+            background-color: #262629;
+            border-radius: 8px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        .metric-val {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Custom Checkboxes / Inputs styled for fingers (Min 44px height/touch target) */
+        .row-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 48px;
+            border-bottom: 1px solid var(--border-color);
+            padding: 6px 0;
+        }
+
+        .row-item:last-child {
+            border-bottom: none;
+        }
+
+        .label-desc {
+            display: flex;
+            flex-direction: column;
+            max-width: 75%;
+        }
+
+        .label-desc span {
+            font-size: 15px;
+        }
+
+        .label-desc small {
+            color: var(--text-orange);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        /* Large Touch Custom Checkbox */
+        .checkbox-container {
+            position: relative;
+            width: 32px;
+            height: 32px;
+        }
+
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 32px;
+            width: 32px;
+            background-color: #262629;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 10px;
+            top: 5px;
+            width: 7px;
+            height: 14px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        /* Form Inputs */
+        input[type="number"], select, textarea {
+            background-color: #262629;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 16px; /* Prevents auto-zoom on iOS */
+            width: 100%;
+        }
+
+        .workout-sets {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .set-input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .set-input-group label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Buttons */
+        button {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+            min-height: 48px;
+            transition: opacity 0.2s;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        button.secondary {
+            background-color: #262629;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        /* Sticky Bottom Navigation */
+        nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(60px + var(--safe-area-bottom));
+            background-color: #1c1c1e;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: var(--safe-area-bottom);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 500;
+            width: 25%;
+            height: 100%;
+        }
+
+        .nav-item.active {
+            color: var(--accent-blue);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        /* Logs Lists */
+        .log-item {
+            background-color: #262629;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .log-date {
+            font-weight: bold;
+            color: var(--accent-blue);
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .flex-row > div {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="header-title">Dashboard</h1>
+        <p>Age: 53 | Height: 6'0" | Tracking Active</p>
+    </header>
+
+    <main id="view-dashboard" class="view active">
+        <div class="card">
+            <h2>Today's Progress</h2>
+            
+            <div class="progress-group">
+                <div class="progress-labels">
+                    <span>Protein</span>
+                    <span id="txt-protein-progress">0g / 150g</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="bar-protein" class="progress-bar-fill" style="background-color: var(--accent-blue);"></div>
+                </div>
+            </div>
+
+            <div class="progress-group">
+                <div class="progress-labels">
+                    <span>Daily Calories</span>
+                    <span id="txt-calories-progress">0 / 1,900 kcal</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="bar-calories" class="progress-bar-fill" style="background-color: var(--accent-orange);"></div>
+                </div>
+            </div>
+
+            <div class="progress-group">
+                <div class="progress-labels">
+                    <span>Daily Steps</span>
+                    <span id="txt-steps-progress">0 / 8,000</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="bar-steps" class="progress-bar-fill" style="background-color: var(--accent-green);"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Current Profile Metrics</h2>
+            <div class="metric-grid">
+                <div class="metric-box">
+                    <div class="metric-label">Weight</div>
+                    <div class="metric-val" id="m-weight">173 lbs</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Body Fat %</div>
+                    <div class="metric-val" id="m-bf">18.8%</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Lean Mass</div>
+                    <div class="metric-val" id="m-lean">140.5 lbs</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Quick Progress Counter</h2>
+            <div class="flex-row">
+                <div>
+                    <label style="font-size:12px; color:var(--text-muted);">Log Quick Calories</label>
+                    <input type="number" id="input-quick-cal" placeholder="Add kcal" pattern="[0-9]*">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:var(--text-muted);">Log Quick Steps</label>
+                    <input type="number" id="input-quick-steps" placeholder="Add steps" pattern="[0-9]*">
+                </div>
+            </div>
+            <button onclick="saveQuickStats()">Update Daily Totals</button>
+        </div>
+    </main>
+
+    <main id="view-workout" class="view">
+        <div class="card">
+            <h2>Neck & Knee-Safe Split</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+                ⚠️ Focus entirely on controlled movement rules. Absolute zero neck-strain design.
+            </p>
+
+            <div id="exercises-list">
+                <div class="exercise-block" style="margin-bottom:20px; border-bottom: 1px solid var(--border-color); padding-bottom:14px;">
+                    <div class="row-item" style="border:none; min-height:auto;">
+                        <div class="label-desc">
+                            <strong style="font-size:15px;">1. Chest Supported Row Machine</strong>
+                            <small>Form: Press chest into pad, keep neck neutral</small>
+                        </div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="ex-check" data-ex="Chest Supported Row Machine">
+                            <span class="checkmark"></span>
+                        </label>
+                    </div>
+                    <div class="workout-sets">
+                        <div class="set-input-group">
+                            <label>Lbs</label>
+                            <input type="number" class="ex-weight" placeholder="0" pattern="[0-9]*">
+                        </div>
+                        <div class="set-input-group">
+                            <label>Reps</label>
+                            <input type="number" class="ex-reps" placeholder="0" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exercise-block" style="margin-bottom:20px; border-bottom: 1px solid var(--border-color); padding-bottom:14px;">
+                    <div class="row-item" style="border:none; min-height:auto;">
+                        <div class="label-desc">
+                            <strong style="font-size:15px;">2. Seated Cable Chest Press</strong>
+                            <small>Form: Head flat against back pad, no neck shrugging</small>
+                        </div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="ex-check" data-ex="Seated Cable Chest Press">
+                            <span class="checkmark"></span>
+                        </label>
+                    </div>
+                    <div class="workout-sets">
+                        <div class="set-input-group">
+                            <label>Lbs</label>
+                            <input type="number" class="ex-weight" placeholder="0" pattern="[0-9]*">
+                        </div>
+                        <div class="set-input-group">
+                            <label>Reps</label>
+                            <input type="number" class="ex-reps" placeholder="0" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exercise-block" style="margin-bottom:20px; border-bottom: 1px solid var(--border-color); padding-bottom:14px;">
+                    <div class="row-item" style="border:none; min-height:auto;">
+                        <div class="label-desc">
+                            <strong style="font-size:15px;">3. Lat Pulldowns (To Chin)</strong>
+                            <small>Form: Pull to front chin only, never behind neck</small>
+                        </div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="ex-check" data-ex="Lat Pulldowns (To Chin)">
+                            <span class="checkmark"></span>
+                        </label>
+                    </div>
+                    <div class="workout-sets">
+                        <div class="set-input-group">
+                            <label>Lbs</label>
+                            <input type="number" class="ex-weight" placeholder="0" pattern="[0-9]*">
+                        </div>
+                        <div class="set-input-group">
+                            <label>Reps</label>
+                            <input type="number" class="ex-reps" placeholder="0" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exercise-block" style="margin-bottom:20px; border-bottom: 1px solid var(--border-color); padding-bottom:14px;">
+                    <div class="row-item" style="border:none; min-height:auto;">
+                        <div class="label-desc">
+                            <strong style="font-size:15px;">4. Seated Leg Extension</strong>
+                            <small>Form: Light/mod weight, controlled tempo to protect knees</small>
+                        </div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="ex-check" data-ex="Seated Leg Extension">
+                            <span class="checkmark"></span>
+                        </label>
+                    </div>
+                    <div class="workout-sets">
+                        <div class="set-input-group">
+                            <label>Lbs</label>
+                            <input type="number" class="ex-weight" placeholder="0" pattern="[0-9]*">
+                        </div>
+                        <div class="set-input-group">
+                            <label>Reps</label>
+                            <input type="number" class="ex-reps" placeholder="0" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exercise-block" style="margin-bottom:20px; border-bottom: 1px solid var(--border-color); padding-bottom:14px;">
+                    <div class="row-item" style="border:none; min-height:auto;">
+                        <div class="label-desc">
+                            <strong style="font-size:15px;">5. Seated Leg Curl</strong>
+                            <small>Form: Smooth contraction</small>
+                        </div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="ex-check" data-ex="Seated Leg Curl">
+                            <span class="checkmark"></span>
+                        </label>
+                    </div>
+                    <div class="workout-sets">
+                        <div class="set-input-group">
+                            <label>Lbs</label>
+                            <input type="number" class="ex-weight" placeholder="0" pattern="[0-9]*">
+                        </div>
+                        <div class="set-input-group">
+                            <label>Reps</label>
+                            <input type="number" class="ex-reps" placeholder="0" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="exercise-block" style="margin-bottom:14px;">
+                    <div class="row-item" style="border:none; min-height:auto;">
+                        <div class="label-desc">
+                            <strong style="font-size:15px;">6. Seated Machine Crunch</strong>
+                            <small>Form: Support torso, isolate abs, no neck pulling</small>
+                        </div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="ex-check" data-ex="Seated Machine Crunch">
+                            <span class="checkmark"></span>
+                        </label>
+                    </div>
+                    <div class="workout-sets">
+                        <div class="set-input-group">
+                            <label>Lbs</label>
+                            <input type="number" class="ex-weight" placeholder="0" pattern="[0-9]*">
+                        </div>
+                        <div class="set-input-group">
+                            <label>Reps</label>
+                            <input type="number" class="ex-reps" placeholder="0" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <button onclick="saveWorkoutLog()">Save Workout Log</button>
+        </div>
+    </main>
+
+    <main id="view-nutrition" class="view">
+        <div class="card">
+            <h2>Protein Schedule</h2>
+            
+            <div class="row-item">
+                <div class="label-desc">
+                    <span>11:00 AM: Protein Shake / Isolate</span>
+                    <small>Target: 50g</small>
+                </div>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="nutr-check" data-prot="50" id="chk-m1" onchange="calcDailyNutrition()">
+                    <span class="checkmark"></span>
+                </label>
+            </div>
+
+            <div class="row-item">
+                <div class="label-desc">
+                    <span>3:00 PM: Mid-Day Whole Food / Yogurt</span>
+                    <small>Target: 25g</small>
+                </div>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="nutr-check" data-prot="25" id="chk-m2" onchange="calcDailyNutrition()">
+                    <span class="checkmark"></span>
+                </label>
+            </div>
+
+            <div class="row-item">
+                <div class="label-desc">
+                    <span>6:30 PM: Lean Protein Dinner</span>
+                    <small>Target: 55g</small>
+                </div>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="nutr-check" data-prot="55" id="chk-m3" onchange="calcDailyNutrition()">
+                    <span class="checkmark"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Supplements</h2>
+            <div class="row-item">
+                <div class="label-desc">
+                    <span>Creatine Monohydrate</span>
+                    <small>5g daily - Crucial for ATP & muscle fatigue protect</small>
+                </div>
+                <label class="checkbox-container">
+                    <input type="checkbox" id="chk-creatine" onchange="calcDailyNutrition()">
+                    <span class="checkmark"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Medication Taper</h2>
+            <div style="margin-bottom: 12px;">
+                <label style="display:block; font-size:14px; margin-bottom:6px; color:var(--text-muted);">Current Tirzepatide Dose</label>
+                <select id="select-dose">
+                    <option value="12.5mg">12.5 mg</option>
+                    <option value="10mg">10.0 mg</option>
+                    <option value="7.5mg">7.5 mg</option>
+                    <option value="5mg">5.0 mg</option>
+                    <option value="2.5mg">2.5 mg</option>
+                </select>
+            </div>
+            <button onclick="logMedication()" style="background-color: var(--accent-orange);">Log Weekly Injection</button>
+            
+            <div class="row-item" style="margin-top: 14px; border-bottom:none;">
+                <div class="label-desc">
+                    <span>Hormone Optimization / TRT</span>
+                    <small>Labs ordered updates toggle status</small>
+                </div>
+                <label class="checkbox-container">
+                    <input type="checkbox" id="chk-trt" onchange="saveMedsState()">
+                    <span class="checkmark"></span>
+                </label>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-logs" class="view">
+        <div class="card">
+            <h2>Log Today's Body Metrics</h2>
+            <div class="flex-row">
+                <div>
+                    <label style="font-size:12px; color:var(--text-muted);">Weight (lbs)</label>
+                    <input type="number" id="log-weight" step="0.1" value="173.0">
+                </div>
+                <div>
+                    <label style="font-size:12px; color:var(--text-muted);">Body Fat %</label>
+                    <input type="number" id="log-bf" step="0.1" value="18.8">
+                </div>
+            </div>
+            <button onclick="saveBodyMetrics()">Save Entry</button>
+        </div>
+
+        <div class="card">
+            <h2>History Stream</h2>
+            <div id="history-container" style="max-height: 300px; overflow-y: auto;">
+                <p style="color: var(--text-muted); font-size: 14px;">No historical entries registered yet.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>System Controls</h2>
+            <button class="secondary" onclick="exportDataData()">Export Clean JSON Data</button>
+            <button class="secondary" onclick="clearData()" style="color: #ff453a; margin-top:10px;">Clear Application Storage</button>
+        </div>
+    </main>
+
+    <nav>
+        <a href="#" class="nav-item active" onclick="switchTab(event, 'dashboard')">
+            <div class="nav-icon">📊</div>
+            <div>Dashboard</div>
+        </a>
+        <a href="#" class="nav-item" onclick="switchTab(event, 'workout')">
+            <div class="nav-icon">💪</div>
+            <div>Workout</div>
+        </a>
+        <a href="#" class="nav-item" onclick="switchTab(event, 'nutrition')">
+            <div class="nav-icon">🥗</div>
+            <div>Nutrition</div>
+        </a>
+        <a href="#" class="nav-item" onclick="switchTab(event, 'logs')">
+            <div class="nav-icon">📝</div>
+            <div>Logs</div>
+        </a>
+    </nav>
+
+    <script>
+        // Global LocalStorage state engine
+        let state = {
+            profile: { weight: 173, bf: 18.8 },
+            daily: { date: "", protein: 0, calories: 0, steps: 0, meals: [], creatine: false },
+            medsState: { currentDose: "12.5mg", trtChecked: false },
+            history: []
+        };
+
+        const todayStr = new Date().toLocaleDateString();
+
+        // Start Dashboard App
+        window.addEventListener('DOMContentLoaded', () => {
+            initStorage();
+            renderDashboard();
+            renderHistory();
+        });
+
+        function initStorage() {
+            const localData = localStorage.getItem('recomp_dashboard_state');
+            if (localData) {
+                state = JSON.parse(localData);
+            }
+            
+            // Check if day rolled over to reset modern tracking checkboxes
+            if (state.daily.date !== todayStr) {
+                state.daily = {
+                    date: todayStr,
+                    protein: 0,
+                    calories: 0,
+                    steps: 0,
+                    meals: [],
+                    creatine: false
+                };
+                saveStateToStorage();
+            } else {
+                // Restore checkbox variables safely
+                state.daily.meals.forEach(id => {
+                    const chk = document.getElementById(id);
+                    if(chk) chk.checked = true;
+                });
+                if(state.daily.creatine) {
+                    const crc = document.getElementById('chk-creatine');
+                    if(crc) crc.checked = true;
+                }
+            }
+
+            // Restore Med values
+            if (state.medsState) {
+                if(document.getElementById('select-dose')) document.getElementById('select-dose').value = state.medsState.currentDose || "12.5mg";
+                if(document.getElementById('chk-trt')) document.getElementById('chk-trt').checked = state.medsState.trtChecked || false;
+            }
+        }
+
+        function saveStateToStorage() {
+            localStorage.setItem('recomp_dashboard_state', JSON.stringify(state));
+        }
+
+        // Tab Switching Engine
+        function switchTab(e, tabName) {
+            e.preventDefault();
+            document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById(`view-${tabName}`).classList.add('active');
+            e.currentTarget.classList.add('active');
+            
+            // Capitalize title
+            document.getElementById('header-title').innerText = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+            
+            if(tabName === 'dashboard') renderDashboard();
+            if(tabName === 'logs') renderHistory();
+        }
+
+        // Dashboard Calculations & Display Updating
+        function renderDashboard() {
+            // Profile Core calculations
+            const w = parseFloat(state.profile.weight) || 173;
+            const bf = parseFloat(state.profile.bf) || 18.8;
+            const leanMass = w * (1 - (bf / 100));
+
+            document.getElementById('m-weight').innerText = `${w} lbs`;
+            document.getElementById('m-bf').innerText = `${bf}%`;
+            document.getElementById('m-lean').innerText = `${leanMass.toFixed(1)} lbs`;
+
+            // Calculate Today Progress Bars
+            const protTarget = 150;
+            const calTarget = 1900;
+            const stepsTarget = 8000;
+
+            const protPct = Math.min((state.daily.protein / protTarget) * 100, 100);
+            const calPct = Math.min((state.daily.calories / calTarget) * 100, 100);
+            const stepsPct = Math.min((state.daily.steps / stepsTarget) * 100, 100);
+
+            document.getElementById('txt-protein-progress').innerText = `${state.daily.protein}g / ${protTarget}g`;
+            document.getElementById('bar-protein').style.width = `${protPct}%`;
+
+            document.getElementById('txt-calories-progress').innerText = `${state.daily.calories} / ${calTarget} kcal`;
+            document.getElementById('bar-calories').style.width = `${calPct}%`;
+
+            document.getElementById('txt-steps-progress').innerText = `${state.daily.steps.toLocaleString()} / ${stepsTarget.toLocaleString()}`;
+            document.getElementById('bar-steps').style.width = `${stepsPct}%`;
+        }
+
+        // Quick Input Update Controls
+        function saveQuickStats() {
+            const calVal = parseInt(document.getElementById('input-quick-cal').value) || 0;
+            const stepVal = parseInt(document.getElementById('input-quick-steps').value) || 0;
+
+            state.daily.calories += calVal;
+            state.daily.steps += stepVal;
+            
+            document.getElementById('input-quick-cal').value = '';
+            document.getElementById('input-quick-steps').value = '';
+
+            saveStateToStorage();
+            renderDashboard();
+            alert("Daily progress counts updated successfully!");
+        }
+
+        // Nutrition Updates Engine
+        function calcDailyNutrition() {
+            let totalProt = 0;
+            let loggedMeals = [];
+            
+            document.querySelectorAll('.nutr-check').forEach(chk => {
+                if(chk.checked) {
+                    totalProt += parseInt(chk.getAttribute('data-prot'));
+                    loggedMeals.push(chk.id);
+                }
+            });
+
+            state.daily.protein = totalProt;
+            state.daily.meals = loggedMeals;
+            state.daily.creatine = document.getElementById('chk-creatine').checked;
+            
+            saveStateToStorage();
+        }
+
+        function saveMedsState() {
+            state.medsState = {
+                currentDose: document.getElementById('select-dose').value,
+                trtChecked: document.getElementById('chk-trt').checked
+            };
+            saveStateToStorage();
+        }
+
+        function logMedication() {
+            saveMedsState();
+            const currentDose = state.medsState.currentDose;
+            
+            const logEntry = {
+                date: todayStr,
+                type: "Medication Injection",
+                details: `Injected Tirzepatide: ${currentDose}`
+            };
+
+            state.history.unshift(logEntry);
+            saveStateToStorage();
+            alert(`Logged weekly Tirzepatide injection dose: ${currentDose}`);
+        }
+
+        // Save Workout Execution Logger
+        function saveWorkoutLog() {
+            let completedExercises = [];
+            const blocks = document.querySelectorAll('.exercise-block');
+
+            blocks.forEach(block => {
+                const chk = block.querySelector('.ex-check');
+                if (chk.checked) {
+                    const name = chk.getAttribute('data-ex');
+                    const weight = block.querySelector('.ex-weight').value || "0";
+                    const reps = block.querySelector('.ex-reps').value || "0";
+                    completedExercises.push(`${name} (${weight} lbs x ${reps} reps)`);
+                }
+            });
+
+            if(completedExercises.length === 0) {
+                alert("Please check at least one completed exercise before saving.");
+                return;
+            }
+
+            const logEntry = {
+                date: todayStr,
+                type: "Workout Routine Completed",
+                details: completedExercises.join(', ')
+            };
+
+            state.history.unshift(logEntry);
+            saveStateToStorage();
+
+            // Clear checkboxes and input forms
+            document.querySelectorAll('.ex-check').forEach(c => c.checked = false);
+            document.querySelectorAll('.ex-weight, .ex-reps').forEach(i => i.value = '');
+            
+            alert("Safe Workout Saved to Logs Successfully!");
+        }
+
+        // Weight Metric Updating Engine
+        function saveBodyMetrics() {
+            const weightInput = parseFloat(document.getElementById('log-weight').value);
+            const bfInput = parseFloat(document.getElementById('log-bf').value);
+
+            if(isNaN(weightInput) || isNaN(bfInput)) {
+                alert("Please verify all data parameters before updating system logs.");
+                return;
+            }
+
+            state.profile.weight = weightInput;
+            state.profile.bf = bfInput;
+
+            const leanMass = weightInput * (1 - (bfInput / 100));
+
+            const logEntry = {
+                date: todayStr,
+                type: "Body Recomp Metrics",
+                details: `Weight: ${weightInput} lbs | BF: ${bfInput}% | Calculated Lean Mass: ${leanMass.toFixed(1)} lbs`
+            };
+
+            state.history.unshift(logEntry);
+            saveStateToStorage();
+            renderHistory();
+            alert("Body compilation matrix updated!");
+        }
+
+        // Render Logs History Streams
+        function renderHistory() {
+            const container = document.getElementById('history-container');
+            if(state.history.length === 0) {
+                container.innerHTML = `<p style="color: var(--text-muted); font-size: 14px;">No historical entries registered yet.</p>`;
+                return;
+            }
+
+            container.innerHTML = state.history.map(item => `
+                <div class="log-item">
+                    <div class="log-date">${item.date} — <strong>${item.type}</strong></div>
+                    <div style="color: #e5e5ea; margin-top:3px;">${item.details}</div>
+                </div>
+            `).join('');
+        }
+
+        // System Export Strategy
+        function exportDataData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `recomp_health_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function clearData() {
+            if(confirm("Are you absolutely sure you want to completely reset all history logs? This cannot be reversed.")) {
+                localStorage.removeItem('recomp_dashboard_state');
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

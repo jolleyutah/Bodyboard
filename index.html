@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BodyBoard">
+<meta name="theme-color" content="#121212">
+<link rel="manifest" href="manifest.json">
 <title>BodyBoard</title>
 <style>
 :root {
@@ -864,7 +867,48 @@ document.addEventListener('DOMContentLoaded',()=>{
   refreshDash();
   refreshNut();
   renderEx();
+  registerSW();
+  setAppIcon();
 });
+
+function registerSW(){
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  }
+}
+
+// Generates the iOS home screen icon dynamically via canvas
+// (iOS ignores SVG icons in manifest.json; this canvas PNG is what shows on the home screen)
+function setAppIcon(){
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 180;
+    const ctx = c.getContext('2d');
+    // Dark rounded background
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(0,0,180,180,36);
+    else { ctx.rect(0,0,180,180); }
+    ctx.fillStyle = '#121212';
+    ctx.fill();
+    // Blue accent bar at bottom
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(18,148,144,14,7);
+    else { ctx.rect(18,148,144,14); }
+    ctx.fillStyle = '#0A84FF';
+    ctx.fill();
+    // "B" letter
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '800 108px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('B', 90, 84);
+    // Inject as apple-touch-icon
+    const link = document.createElement('link');
+    link.rel = 'apple-touch-icon';
+    link.href = c.toDataURL('image/png');
+    document.head.appendChild(link);
+  } catch(e){}
+}
 </script>
 </body>
 </html>

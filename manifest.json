@@ -1,0 +1,19 @@
+{
+  "name": "BodyBoard",
+  "short_name": "BodyBoard",
+  "description": "Body Recomposition & Health Dashboard",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%23121212'/%3E%3Crect x='20' y='148' width='152' height='14' rx='7' fill='%230A84FF'/%3E%3Ctext x='96' y='130' font-family='system-ui,sans-serif' font-size='108' font-weight='800' fill='white' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
