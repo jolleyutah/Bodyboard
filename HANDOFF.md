@@ -1,9 +1,22 @@
 # BodyBoard — Session Handoff
 
 **Date:** June 5, 2026  
-**Project location after move:** `$HOME/Dev/Bodyboard/`  
+**Project location:** `$HOME/Dev/Bodyboard/`  
 **Status:** PWA complete and working. NAS backend written, not yet deployed.  
 **Next session goal:** Wire the frontend to the NAS API, verify end-to-end data flow.
+
+---
+
+## Change Log
+
+### June 5, 2026 — Session 1
+- Built complete PWA (index.html, sw.js, manifest.json)
+- Wrote full NAS backend (server/ directory) — not yet deployed
+- **Service Worker registration commented out** in `index.html` (`registerSW()` function body is commented out)
+  - Reason: with a live backend, SW only caches the app shell — data still requires network. Offline = app loads but all data is empty, which is misleading. Also causes stale cache headaches during active development.
+  - The `manifest.json` is kept — it handles Add to Home Screen, splash screen, and standalone display independently of the SW.
+  - The `sw.js` file is kept but not registered — re-enable when backend is stable with a proper network-first API strategy. See note in Next Session below.
+  - To re-enable: uncomment the `registerSW()` body in `index.html`. Also clear any previously cached SW from test devices (Safari → Settings → Advanced → Website Data).
 
 ---
 
@@ -220,7 +233,9 @@ Keep LocalStorage as a read cache for the current session:
 
 6. **JWT_SECRET must be set in production.** The default fallback in the code is `'change-this-secret-in-production'`. Fine for local testing, not for live use. Generate with: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
-7. **The canvas-generated apple-touch-icon is set dynamically.** `setAppIcon()` in index.html runs on `DOMContentLoaded` and injects a `<link rel="apple-touch-icon">` with a base64 PNG generated via canvas. This is what appears on the iPhone home screen. iOS ignores SVG icons in manifest.json.
+7. **Service Worker is written but intentionally not registered.** `registerSW()` in `index.html` has its body commented out. The `sw.js` file exists and is correct. Do not re-enable it until the backend is stable — when you do, upgrade it to network-first for API calls, cache-first for the shell only, with a deploy-time version bump in the cache name. The `manifest.json` (PWA install, home screen icon, standalone mode) is unaffected and active.
+
+8. **The canvas-generated apple-touch-icon is set dynamically.** `setAppIcon()` in index.html runs on `DOMContentLoaded` and injects a `<link rel="apple-touch-icon">` with a base64 PNG generated via canvas. This is what appears on the iPhone home screen. iOS ignores SVG icons in manifest.json.
 
 8. **Workout exercises are hardcoded in `EXDB` in index.html.** Day A = upper push/pull, Day B = lower + core, Day C = full body combo. These will be replaced by per-user `exercises_json` from the profile API in Phase 2.
 

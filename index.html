@@ -872,9 +872,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 function registerSW(){
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('/sw.js').catch(()=>{});
-  }
+  // Disabled during active development - re-enable for production
+  // if('serviceWorker' in navigator){
+  //  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  // }
 }
 
 // Generates the iOS home screen icon dynamically via canvas
