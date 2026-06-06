@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="BodyBoard">
 <meta name="theme-color" content="#121212">
 <link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <title>BodyBoard</title>
 <style>
 :root {
@@ -161,6 +162,23 @@ input:checked+.tsl:before{transform:translateX(20px);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 .sep{height:1px;background:var(--border);margin:14px 0;}
+
+/* Auth overlay */
+#auth-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:none;align-items:center;justify-content:center;padding:20px;}
+.auth-card{width:100%;max-width:360px;}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.auth-logo h1{font-size:34px;font-weight:800;letter-spacing:-1px;}
+.auth-logo p{font-size:14px;color:var(--t2);margin-top:4px;}
+.auth-tabs{display:flex;background:var(--card2);border-radius:10px;padding:3px;margin-bottom:24px;}
+.auth-tab{flex:1;padding:9px;text-align:center;font-size:14px;font-weight:600;border:none;background:none;color:var(--t2);border-radius:8px;cursor:pointer;transition:all .2s;}
+.auth-tab.active{background:var(--card);color:var(--t1);box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.auth-field{margin-bottom:14px;}
+.auth-field label{font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;}
+.auth-field input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--t1);font-size:16px;outline:none;-webkit-appearance:none;}
+.auth-field input:focus{border-color:var(--blue);}
+.auth-err{font-size:13px;text-align:center;min-height:18px;margin-bottom:12px;color:var(--red);}
+.auth-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:600;cursor:pointer;margin-top:4px;-webkit-appearance:none;}
+.auth-btn:disabled{opacity:.5;}
 </style>
 </head>
 <body>
@@ -431,6 +449,7 @@ input:checked+.tsl:before{transform:translateX(20px);}
     <button class="btn btn-outline" onclick="exportJSON()" style="margin-bottom:10px;">📤&nbsp; Export All Data (JSON)</button>
     <button class="btn btn-outline" onclick="exportCSV()" style="margin-bottom:10px;border-color:var(--green);color:var(--green);">📊&nbsp; Export Weight Log (CSV)</button>
     <button class="btn btn-red" onclick="clearData()">🗑️&nbsp; Clear All Data</button>
+    <button class="btn btn-outline" onclick="logout()" style="margin-top:10px;border-color:var(--t3);color:var(--t2);">Sign Out</button>
   </div>
 </div>
 
@@ -469,9 +488,167 @@ input:checked+.tsl:before{transform:translateX(20px);}
   </button>
 </nav>
 
+<!-- Auth overlay -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>BodyBoard</h1>
+      <p>Your personal health dashboard</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-signin" onclick="authTab('signin')">Sign In</button>
+      <button class="auth-tab" id="tab-signup" onclick="authTab('signup')">Sign Up</button>
+    </div>
+    <div id="auth-name-field" class="auth-field" style="display:none">
+      <label>Name</label>
+      <input type="text" id="auth-name" placeholder="Your name" autocomplete="name">
+    </div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="auth-pass" placeholder="Password" autocomplete="current-password">
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <button class="auth-btn" id="auth-submit" onclick="authSubmit()">Sign In</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
+// ─── Supabase ─────────────────────────────────────────────────
+const SUPABASE_URL = 'https://gfmtullwlrcaehjokjju.supabase.co';
+const SUPABASE_KEY = 'sb_publishable__JDb9xPSxomIYI44FqK0rg_VoI0ZlbV';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
+
+// ─── Auth UI ──────────────────────────────────────────────────
+let authMode = 'signin';
+function authTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-signin').classList.toggle('active', mode === 'signin');
+  document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+  document.getElementById('auth-name-field').style.display = mode === 'signup' ? '' : 'none';
+  document.getElementById('auth-submit').textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('auth-err').textContent = '';
+  document.getElementById('auth-pass').autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
+}
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  const btn   = document.getElementById('auth-submit');
+  const err   = document.getElementById('auth-err');
+  if (!email || !pass) { err.textContent = 'Email and password are required.'; return; }
+  btn.disabled = true; btn.textContent = '…'; err.textContent = '';
+  let res;
+  if (authMode === 'signin') {
+    res = await sb.auth.signInWithPassword({ email, password: pass });
+  } else {
+    const name = document.getElementById('auth-name').value.trim();
+    if (!name) { err.textContent = 'Please enter your name.'; btn.disabled = false; btn.textContent = 'Create Account'; return; }
+    res = await sb.auth.signUp({ email, password: pass, options: { data: { name } } });
+  }
+  if (res.error) {
+    err.textContent = res.error.message;
+    btn.disabled = false;
+    btn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+    return;
+  }
+  if (authMode === 'signup' && !res.data.session) {
+    err.style.color = 'var(--green)';
+    err.textContent = 'Check your email to confirm your account.';
+    btn.disabled = false; btn.textContent = 'Create Account';
+    return;
+  }
+  currentUser = res.data.session.user;
+  document.getElementById('auth-screen').style.display = 'none';
+  await loadFromSupabase();
+  refreshDash(); refreshNut(); renderEx();
+}
+async function logout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  localStorage.clear();
+  const s = document.getElementById('auth-screen');
+  s.style.display = 'flex';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-pass').value = '';
+  authTab('signin');
+}
+
+// ─── Load from Supabase into localStorage cache ───────────────
+async function loadFromSupabase() {
+  if (!currentUser) return;
+  const uid = currentUser.id;
+  const td  = today();
+
+  const { data: log } = await sb.from('daily_logs').select('*').eq('user_id', uid).eq('date', td).maybeSingle();
+  if (log) {
+    set('day_' + td, { steps: log.steps, cals: log.calories, protein: log.protein });
+    if (log.checks) set('chk_' + td, log.checks);
+    if (log.notes)  set('notes_' + td, log.notes);
+  }
+
+  const { data: wlogs } = await sb.from('daily_logs').select('*').eq('user_id', uid).not('weight', 'is', null).order('date', { ascending: false }).limit(60);
+  if (wlogs?.length) {
+    set('wt_logs', wlogs.map(l => ({ date: l.date, wt: l.weight, bf: l.bf || 0, lean: l.lean, protein: l.protein, cals: l.calories, ts: Date.parse(l.created_at) })));
+  }
+
+  const { data: wos } = await sb.from('workout_logs').select('*').eq('user_id', uid).order('date', { ascending: false }).limit(20);
+  if (wos?.length) {
+    set('wo_logs', wos.map(w => ({ date: w.date, day: w.day_label, exercises: w.exercises || [], ts: Date.parse(w.created_at) })));
+  }
+
+  const { data: inj } = await sb.from('injection_logs').select('*').eq('user_id', uid).order('date', { ascending: false }).limit(1).maybeSingle();
+  if (inj) set('last_inj', { date: inj.date, dose: inj.dose, ts: Date.parse(inj.created_at) });
+
+  const { data: setts } = await sb.from('settings').select('*').eq('user_id', uid);
+  if (setts) {
+    const togs = {};
+    setts.forEach(s => {
+      if (s.key === 'tzdose') set('tzdose', s.value);
+      if (s.key === 'trt')    togs.trt  = s.value === 'true';
+      if (s.key === 'labs')   togs.labs = s.value === 'true';
+    });
+    if (Object.keys(togs).length) set('togs', togs);
+  }
+}
+
+// ─── Background sync to Supabase ─────────────────────────────
+async function syncDailyLog() {
+  if (!currentUser) return;
+  const td   = today();
+  const d    = get('day_' + td) || {};
+  const logs = get('wt_logs') || [];
+  const wt   = logs.find(l => l.date === td);
+  await sb.from('daily_logs').upsert({
+    user_id:  currentUser.id, date: td,
+    weight:   wt?.wt   ?? null,
+    bf:       wt?.bf   ?? null,
+    lean:     wt?.lean ?? null,
+    protein:  d.protein  ?? null,
+    calories: d.cals     ?? null,
+    steps:    d.steps    ?? null,
+    notes:    get('notes_' + td) ?? null,
+    checks:   get('chk_' + td)  ?? {}
+  }, { onConflict: 'user_id,date' });
+}
+async function syncWorkout(entry) {
+  if (!currentUser) return;
+  await sb.from('workout_logs').insert({ user_id: currentUser.id, date: entry.date, day_label: entry.day, exercises: entry.exercises });
+}
+async function syncInjection(entry) {
+  if (!currentUser) return;
+  await sb.from('injection_logs').insert({ user_id: currentUser.id, date: entry.date, medication: 'Tirzepatide', dose: entry.dose, unit: 'mg' });
+}
+async function syncSetting(key, value) {
+  if (!currentUser) return;
+  await sb.from('settings').upsert({ user_id: currentUser.id, key, value: String(value), updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
+}
+
 // ─── Constants ───────────────────────────────────────────────
 const T = { protein:150, cals:1900, steps:8000, meals:[50,25,55] };
 
@@ -585,6 +762,7 @@ function saveActivity() {
   d.steps = s; d.cals = c;
   set(dk,d);
   refreshDash();
+  syncDailyLog();
   toast('✅ Activity saved!');
 }
 
@@ -680,6 +858,7 @@ function saveWorkout(){
   logs.unshift(entry);
   set('wo_logs',logs);
   set('draft_'+curDay,{});
+  syncWorkout(entry);
   renderEx();
   toast(`✅ Day ${curDay} saved! (${doneCount}/${exs.length} exercises)`);
 }
@@ -733,6 +912,7 @@ function chk(key){
   refreshNut();
   if(curTab==='dashboard') refreshDash();
   else refreshDash(); // always keep dash in sync
+  syncDailyLog();
   toast(chks[key]?'✅ Logged!':'↩️ Unchecked');
 }
 
@@ -740,12 +920,15 @@ function setDose(d,btn){
   set('tzdose',d);
   document.querySelectorAll('.doseb').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
+  syncSetting('tzdose', d);
 }
 
 function logInj(){
   const dose = get('tzdose')||'12.5';
-  set('last_inj',{date:today(),dose,ts:Date.now()});
+  const entry = {date:today(),dose,ts:Date.now()};
+  set('last_inj',entry);
   refreshNut();
+  syncInjection(entry);
   toast(`💉 Injection logged: ${dose}mg Tirzepatide`);
 }
 
@@ -753,10 +936,12 @@ function saveTog(key,val){
   const togs = get('togs')||{};
   togs[key]=val;
   set('togs',togs);
+  syncSetting(key, val);
 }
 
 function saveNotes(){
   set('notes_'+today(), document.getElementById('notes-area').value);
+  syncDailyLog();
 }
 
 // ─── LOGS ────────────────────────────────────────────────────
@@ -780,6 +965,7 @@ function saveLog(){
   ['li-wt','li-bf','li-pro','li-cal'].forEach(id=>document.getElementById(id).value='');
   refreshLogs();
   refreshDash();
+  syncDailyLog();
   toast('✅ Daily log saved!');
 }
 
@@ -863,12 +1049,28 @@ function clearData(){
 }
 
 // ─── INIT ────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded',()=>{
-  refreshDash();
-  refreshNut();
-  renderEx();
-  registerSW();
+document.addEventListener('DOMContentLoaded', async () => {
   setAppIcon();
+  registerSW();
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session && !currentUser) {
+      currentUser = session.user;
+      document.getElementById('auth-screen').style.display = 'none';
+      await loadFromSupabase();
+      refreshDash(); refreshNut(); renderEx();
+    }
+    if (event === 'SIGNED_OUT') {
+      document.getElementById('auth-screen').style.display = 'flex';
+    }
+  });
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    return;
+  }
+  currentUser = session.user;
+  await loadFromSupabase();
+  refreshDash(); refreshNut(); renderEx();
 });
 
 function registerSW(){

@@ -36,6 +36,32 @@ bodyboard/
 2. **A shared folder** for the project, e.g. `/volume1/docker/bodyboard/`
 3. Your domain pointed to Cloudflare (see OPTIONS.md §1D)
 
+> **Note on Web Station:** You do NOT need Web Station for BodyBoard. The Node.js
+> Docker container serves both the static frontend files and the API on port 3000.
+> Web Station 4.x (DSM 7) has a redesigned UI that no longer has a "Virtual Host"
+> tab — it uses "Web Service Portal" instead — but none of that is needed here.
+> If you want to test static-file serving before the backend is ready, use the
+> nginx one-liner in the "Static-Only Preview" section below.
+
+---
+
+## Static-Only Preview (Optional — Before Backend is Ready)
+
+If you want to confirm the files are accessible on your NAS before deploying the
+full Node.js backend, run this single Docker command:
+
+```bash
+docker run -d \
+  --name bodyboard-static \
+  --restart unless-stopped \
+  -p 8080:80 \
+  -v /volume1/docker/bodyboard:/usr/share/nginx/html:ro \
+  nginx:alpine
+```
+
+App is then accessible at `http://your-nas-ip:8080` on your local network.
+Stop and remove it when ready for the full backend: `docker rm -f bodyboard-static`
+
 ---
 
 ## Step 1: Create the Server Files
